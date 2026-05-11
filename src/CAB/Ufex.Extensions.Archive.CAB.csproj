@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Ufex.Extensions.Archive.CAB</RootNamespace>
+    <AssemblyName>Ufex.Extensions.Archive.CAB</AssemblyName>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+</Project>
