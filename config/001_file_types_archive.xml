@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Ufex xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<FileTypeClasses>
+		<FileTypeClass>
+			<ID>FTMD_CAB</ID>
+			<AssemblyPath>Ufex.Extensions.Archive.CAB.dll</AssemblyPath>
+			<FullTypeName>Ufex.Extensions.Archive.CAB.CabFileType</FullTypeName>
+			<FileTypes>
+				<ID>ARCH_CAB</ID>
+			</FileTypes>
+		</FileTypeClass>
+		<FileTypeClass>
+			<ID>FTMD_ISCAB</ID>
+			<AssemblyPath>Ufex.Extensions.Archive.ISCAB.dll</AssemblyPath>
+			<FullTypeName>Ufex.Extensions.Archive.ISCAB.ISCabFileType</FullTypeName>
+			<FileTypes>
+				<ID>ARCH_ISCAB</ID>
+			</FileTypes>
+		</FileTypeClass>
+		<FileTypeClass>
+			<ID>FTMD_TAR</ID>
+			<AssemblyPath>Ufex.Extensions.Archive.TAR.dll</AssemblyPath>
+			<FullTypeName>Ufex.Extensions.Archive.TAR.TarFileType</FullTypeName>
+			<FileTypes>
+				<ID>ARCH_TAR</ID>
+			</FileTypes>
+		</FileTypeClass>
+		<FileTypeClass>
+			<ID>FTMD_SGIINST</ID>
+			<AssemblyPath>SGIInst.dll</AssemblyPath>
+			<FullTypeName>Ufex.Extensions.Archive.SGIInst.SgiInstFileType</FullTypeName>
+			<FileTypes>
+				<ID>ARCH_SGIINST</ID>
+			</FileTypes>
+		</FileTypeClass>
+	</FileTypeClasses>
+</Ufex>

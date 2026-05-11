@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/CAB/">
+    <Project Path="src/CAB/Ufex.Extensions.Archive.CAB.csproj" />
+  </Folder>
+  <Folder Name="/src/ISCAB/">
+    <Project Path="src/ISCAB/Ufex.Extensions.Archive.ISCAB.csproj" />
+  </Folder>
+  <Folder Name="/src/SGIInst/">
+    <Project Path="src/SGIInst/Ufex.Extensions.Archive.SGIInst.csproj" />
+  </Folder>
+  <Folder Name="/src/TAR/">
+    <Project Path="src/TAR/Ufex.Extensions.Archive.TAR.csproj" />
+  </Folder>
+  <Project Path="../../src/Ufex.API/Ufex.API.csproj" />
+</Solution>

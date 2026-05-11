@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Ufex.Extensions.Archive.SGIInst</RootNamespace>
+    <AssemblyName>SGIInst</AssemblyName>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+</Project>
