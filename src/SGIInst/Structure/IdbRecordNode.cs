@@ -52,8 +52,6 @@ internal class IdbRecordNode : TreeNode
 		string? disabledReason = null;
 		if (!hasRegion)
 			disabledReason = "Image file not found or region could not be validated";
-		else if (isCompressed)
-			disabledReason = "Compressed payloads (BSD compress/LZW) are not yet supported for extraction";
 
 		return
 		[
@@ -62,7 +60,7 @@ internal class IdbRecordNode : TreeNode
 				Id = "extract",
 				Label = "Extract...",
 				Group = NodeActionGroup.Export,
-				IsEnabled = hasRegion && !isCompressed,
+				IsEnabled = hasRegion,
 				DisabledReason = disabledReason,
 				Inputs =
 				[
@@ -104,19 +102,29 @@ internal class IdbRecordNode : TreeNode
 		imageStream.Seek(Region.PayloadOffset, SeekOrigin.Begin);
 
 		using var output = File.Create(destination);
-		byte[] buffer = new byte[81920];
-		long remaining = Region.PayloadLength;
-		while (remaining > 0)
-		{
-			context.CancellationToken.ThrowIfCancellationRequested();
-			int toRead = (int)Math.Min(buffer.Length, remaining);
-			int read = imageStream.Read(buffer, 0, toRead);
-			if (read == 0) break;
-			output.Write(buffer, 0, read);
-			remaining -= read;
-		}
 
-		return ActionResult.Success($"Extracted to {destination}");
+		if (Record.IsCompressed)
+		{
+			// Decompress BSD compress (LZW) payload
+			long written = LzwDecompressor.Decompress(imageStream, Region.PayloadLength, output, context.CancellationToken);
+			return ActionResult.Success($"Extracted and decompressed to {destination} ({written} bytes)");
+		}
+		else
+		{
+			// Copy uncompressed payload verbatim
+			byte[] buffer = new byte[81920];
+			long remaining = Region.PayloadLength;
+			while (remaining > 0)
+			{
+				context.CancellationToken.ThrowIfCancellationRequested();
+				int toRead = (int)Math.Min(buffer.Length, remaining);
+				int read = imageStream.Read(buffer, 0, toRead);
+				if (read == 0) break;
+				output.Write(buffer, 0, read);
+				remaining -= read;
+			}
+			return ActionResult.Success($"Extracted to {destination}");
+		}
 	}
 
 	public DynamicTableData TableData()

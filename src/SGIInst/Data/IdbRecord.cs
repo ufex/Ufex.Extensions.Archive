@@ -52,14 +52,15 @@ public class IdbRecord
 	public string Subsystem { get; init; } = "";
 
 	/// <summary>
-	/// The image name (middle component of the subsystem, e.g. "sw", "man")
+	/// The image filename derived from the first two components of the subsystem
+	/// (e.g. "ultra.dev" from "ultra.dev.base", "eoe.sw" from "eoe.sw.unix")
 	/// </summary>
 	public string ImageName
 	{
 		get
 		{
 			var parts = Subsystem.Split('.');
-			return parts.Length >= 2 ? parts[1] : "";
+			return parts.Length >= 2 ? $"{parts[0]}.{parts[1]}" : Subsystem;
 		}
 	}
 
@@ -68,12 +69,32 @@ public class IdbRecord
 	/// </summary>
 	public Dictionary<string, string> Attributes { get; init; } = new();
 
+	/// <summary>
+	/// Computed offset for records missing the off() attribute.
+	/// Set by the stream reader when computing sequential offsets.
+	/// </summary>
+	public Int64? ComputedOffset { get; set; }
+
 	// --- Convenience accessors for common attributes ---
 
 	/// <summary>
-	/// Byte offset in the image file where this file's region begins
+	/// Whether this record has an explicit off() attribute
 	/// </summary>
-	public Int64 Offset => GetInt64Attribute("off");
+	public bool HasExplicitOffset => Attributes.ContainsKey("off");
+
+	/// <summary>
+	/// Byte offset in the image file where this file's region begins.
+	/// Uses explicit off() if present, otherwise falls back to computed offset.
+	/// </summary>
+	public Int64 Offset
+	{
+		get
+		{
+			if (Attributes.TryGetValue("off", out var val) && Int64.TryParse(val, out var result))
+				return result;
+			return ComputedOffset ?? -1;
+		}
+	}
 
 	/// <summary>
 	/// Uncompressed size of the file payload

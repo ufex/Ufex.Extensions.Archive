@@ -48,7 +48,7 @@ public class SgiInstFileType : FileType
 		if (links > 0) QuickInfoTable.AddRow("Symbolic Links", links.ToString());
 		if (other > 0) QuickInfoTable.AddRow("Other Entries", other.ToString());
 
-		QuickInfoTable.AddRow("Image Files", string.Join(", ", reader.ImageNames.Select(n => $"{reader.BaseName}.{n}")));
+		QuickInfoTable.AddRow("Image Files", string.Join(", ", reader.ImageNames));
 		QuickInfoTable.AddRow("Validated Regions", reader.FileRegions.Count.ToString());
 
 		// Subsystem summary
@@ -73,9 +73,9 @@ public class SgiInstFileType : FileType
 		}
 
 		// Image banners
-		foreach (var banner in reader.ImageBanners)
+		foreach (var kvp in reader.ImageBanners)
 		{
-			QuickInfoTable.AddRow($"Banner ({banner.Key})", $"\"{banner.Value.Text}\"");
+			QuickInfoTable.AddRow($"Banner ({kvp.Key})", $"\"{kvp.Value.Text}\"");
 		}
 	}
 
@@ -85,7 +85,7 @@ public class SgiInstFileType : FileType
 		foreach (var imageName in reader.ImageNames)
 		{
 			var imageRegions = reader.FileRegions
-				.Where(r => r.ImageFileName == $"{reader.BaseName}.{imageName}")
+				.Where(r => r.ImageFileName == imageName)
 				.OrderBy(r => r.StartPosition)
 				.ToList();
 
@@ -205,7 +205,7 @@ public class SgiInstFileType : FileType
 			var imagesNode = new TreeNode("Image Files", TreeViewIcon.FolderClosed, TreeViewIcon.FolderOpen);
 			foreach (var kvp in reader.ImageBanners.OrderBy(b => b.Key))
 			{
-				var bannerNode = new ImageBannerNode(kvp.Value, $"{reader.BaseName}.{kvp.Key}");
+				var bannerNode = new ImageBannerNode(kvp.Value, kvp.Key);
 				imagesNode.Nodes.Add(bannerNode);
 			}
 			TreeNodes.Add(imagesNode);

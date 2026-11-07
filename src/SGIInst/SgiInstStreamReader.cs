@@ -114,20 +114,20 @@ public class SgiInstStreamReader
 
 	private IdbRecord? ParseRecord(string line, int lineNumber)
 	{
-		// Split by whitespace into tokens
-		// The first 7 tokens are positional fields; the rest are attributes
-		// However, attributes can contain spaces inside parentheses, so we parse carefully
+		// The first 6 tokens are positional fields: type mode owner group filename source
+		// After that, the remaining tokens are a mix of attributes and the subsystem.
+		// The subsystem is identified by its three-part dotted form (a.b.c).
 
 		int pos = 0;
 		var tokens = new List<string>();
 
-		// Read 7 positional fields
-		for (int i = 0; i < 7; i++)
+		// Read 6 positional fields
+		for (int i = 0; i < 6; i++)
 		{
 			SkipWhitespace(line, ref pos);
 			if (pos >= line.Length)
 			{
-				ValidationReport.Warning($"IDB line {lineNumber}: expected 7 fields, found {i}");
+				ValidationReport.Warning($"IDB line {lineNumber}: expected at least 6 fields, found {i}");
 				return null;
 			}
 			tokens.Add(ReadToken(line, ref pos));
@@ -151,15 +151,17 @@ public class SgiInstStreamReader
 			ValidationReport.Warning($"IDB line {lineNumber}: invalid octal mode '{tokens[1]}'");
 		}
 
-		// Parse attributes (rest of line)
+		// Parse trailing tokens: a mix of attributes and subsystem
 		var attributes = new Dictionary<string, string>();
+		string? subsystem = null;
+
 		while (pos < line.Length)
 		{
 			SkipWhitespace(line, ref pos);
 			if (pos >= line.Length) break;
 
-			string attrName = ReadAttributeName(line, ref pos);
-			if (attrName.Length == 0) break;
+			string tokenText = ReadAttributeName(line, ref pos);
+			if (tokenText.Length == 0) break;
 
 			if (pos < line.Length && line[pos] == '(')
 			{
@@ -175,13 +177,24 @@ public class SgiInstStreamReader
 				}
 				string value = line[valueStart..pos];
 				if (pos < line.Length) pos++; // skip )
-				attributes[attrName] = value;
+				attributes[tokenText] = value;
+			}
+			else if (IsSubsystemToken(tokenText))
+			{
+				// Subsystem: three or more dot-separated identifier components
+				subsystem = tokenText;
 			}
 			else
 			{
 				// Flag attribute (no value)
-				attributes[attrName] = "";
+				attributes[tokenText] = "";
 			}
+		}
+
+		if (subsystem == null)
+		{
+			ValidationReport.Warning($"IDB line {lineNumber}: no subsystem token found (expected a.b.c pattern)");
+			return null;
 		}
 
 		// Validate filename - reject absolute paths and ..
@@ -202,15 +215,32 @@ public class SgiInstStreamReader
 			Group = tokens[3],
 			FileName = fileName,
 			Source = tokens[5],
-			Subsystem = tokens[6],
+			Subsystem = subsystem,
 			Attributes = attributes
 		};
 	}
 
-	private void ReadImageFile(string directory, string imageName)
+	/// <summary>
+	/// Checks if a token matches the subsystem pattern: three or more dot-separated
+	/// identifier components (letters, digits, underscores).
+	/// </summary>
+	private static bool IsSubsystemToken(string token)
 	{
-		// Build the image file name: <basename>.<imageName>
-		string imageFileName = $"{BaseName}.{imageName}";
+		var parts = token.Split('.');
+		if (parts.Length < 3) return false;
+		foreach (var part in parts)
+		{
+			if (part.Length == 0) return false;
+			foreach (char c in part)
+			{
+				if (!char.IsLetterOrDigit(c) && c != '_') return false;
+			}
+		}
+		return true;
+	}
+
+	private void ReadImageFile(string directory, string imageFileName)
+	{
 		string imagePath = Path.Combine(directory, imageFileName);
 
 		if (!File.Exists(imagePath))
@@ -232,27 +262,61 @@ public class SgiInstStreamReader
 		using var imageStream = new FileStream(imagePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
 		// Read version banner (scan for first NUL byte)
-		var banner = ReadBanner(imageStream, imageName);
+		var banner = ReadBanner(imageStream, imageFileName);
 		if (banner != null)
 		{
-			ImageBanners[imageName] = banner;
-			Log.LogInformation($"Image '{imageName}' banner: \"{banner.Text}\" ({banner.RawBytes.Length} bytes)");
+			ImageBanners[imageFileName] = banner;
+			Log.LogInformation($"Image '{imageFileName}' banner: \"{banner.Text}\" ({banner.RawBytes.Length} bytes)");
 		}
 
-		// Validate file regions for each f-record referencing this image
+		// Get f-records for this image in IDB order
 		var fileRecords = Records
-			.Where(r => r.Type == 'f' && r.ImageName == imageName)
-			.OrderBy(r => r.Offset)
+			.Where(r => r.Type == 'f' && r.ImageName == imageFileName)
 			.ToList();
 
-		foreach (var record in fileRecords)
+		// Compute sequential offsets for records missing off()
+		bool anyMissingOff = fileRecords.Any(r => !r.HasExplicitOffset);
+		if (anyMissingOff)
 		{
+			ComputeSequentialOffsets(fileRecords, banner);
+		}
+
+		// Validate file regions
+		foreach (var record in fileRecords.OrderBy(r => r.Offset))
+		{
+			if (record.Offset < 0) continue;
 			var region = ValidateFileRegion(imageStream, record, imageFileName);
 			if (region != null)
 			{
 				FileRegions.Add(region);
 			}
 		}
+	}
+
+	/// <summary>
+	/// Computes sequential file region offsets for records that lack an explicit off() attribute.
+	/// Walks the records in IDB order, tracking a running offset from the end of the banner.
+	/// Records with explicit off() are used to anchor the running offset.
+	/// </summary>
+	private void ComputeSequentialOffsets(List<IdbRecord> fileRecords, ImageBanner? banner)
+	{
+		long offset = banner?.EndPosition ?? 0;
+
+		foreach (var record in fileRecords)
+		{
+			if (record.HasExplicitOffset)
+			{
+				// Use explicit offset and advance past this record's region
+				offset = record.Offset + 2 + record.FileName.Length + record.PayloadLength;
+			}
+			else
+			{
+				record.ComputedOffset = offset;
+				offset += 2 + record.FileName.Length + record.PayloadLength;
+			}
+		}
+
+		Log.LogInformation($"Computed sequential offsets for {fileRecords.Count(r => !r.HasExplicitOffset)} records");
 	}
 
 	private ImageBanner? ReadBanner(Stream stream, string imageName)
