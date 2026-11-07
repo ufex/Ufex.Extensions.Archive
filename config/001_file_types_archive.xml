@@ -12,7 +12,7 @@
 		<FileTypeClass>
 			<ID>FTMD_ISCAB</ID>
 			<AssemblyPath>Ufex.Extensions.Archive.ISCAB.dll</AssemblyPath>
-			<FullTypeName>Ufex.Extensions.Archive.ISCAB.ISCabFileType</FullTypeName>
+			<FullTypeName>Ufex.Extensions.Archive.ISCAB.IscabFileType</FullTypeName>
 			<FileTypes>
 				<ID>ARCH_ISCAB</ID>
 			</FileTypes>
